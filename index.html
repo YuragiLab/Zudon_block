@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ずどーん積み木ブロック デモ</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        const ZudoonBlocksDemo = () => {
+          const [placedBlocks, setPlacedBlocks] = useState([]);
+          const [draggedBlock, setDraggedBlock] = useState(null);
+          const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+          const containerRef = useRef(null);
+
+          // 利用可能なブロックの種類と色（各色で完全セット・パステルカラー）
+          const blockTypes = [
+            // パステル紫セット
+            { char: 'ず', color: '#D8BFD8', colorName: 'パステル紫', count: 2 },
+            { char: 'ど', color: '#D8BFD8', colorName: 'パステル紫', count: 2 },
+            { char: 'ー', color: '#D8BFD8', colorName: 'パステル紫', count: 2 },
+            { char: 'ん', color: '#D8BFD8', colorName: 'パステル紫', count: 2 },
+            // パステル緑セット
+            { char: 'ず', color: '#B5E7A0', colorName: 'パステル緑', count: 2 },
+            { char: 'ど', color: '#B5E7A0', colorName: 'パステル緑', count: 2 },
+            { char: 'ー', color: '#B5E7A0', colorName: 'パステル緑', count: 2 },
+            { char: 'ん', color: '#B5E7A0', colorName: 'パステル緑', count: 2 },
+            // パステルピンクセット
+            { char: 'ず', color: '#FFB6C1', colorName: 'パステルピンク', count: 2 },
+            { char: 'ど', color: '#FFB6C1', colorName: 'パステルピンク', count: 2 },
+            { char: 'ー', color: '#FFB6C1', colorName: 'パステルピンク', count: 2 },
+            { char: 'ん', color: '#FFB6C1', colorName: 'パステルピンク', count: 2 },
+            // パステル青セット
+            { char: 'ず', color: '#ADD8E6', colorName: 'パステル青', count: 2 },
+            { char: 'ど', color: '#ADD8E6', colorName: 'パステル青', count: 2 },
+            { char: 'ー', color: '#ADD8E6', colorName: 'パステル青', count: 2 },
+            { char: 'ん', color: '#ADD8E6', colorName: 'パステル青', count: 2 }
+          ];
+
+          // 各ブロックタイプの使用済み数をカウント（色別）
+          const getUsedCount = (char, color) => {
+            return placedBlocks.filter(block => block.char === char && block.color === color).length;
+          };
+
+          // ブロックをドラッグ開始
+          const handleMouseDown = (e, blockType, fromPalette = false) => {
+            e.preventDefault();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const containerRect = containerRef.current.getBoundingClientRect();
+            
+            if (fromPalette) {
+              // パレットからの新しいブロック
+              const usedCount = getUsedCount(blockType.char, blockType.color);
+              if (usedCount >= blockType.count) return; // 制限に達している場合は何もしない
+              
+              const newBlock = {
+                id: Date.now(),
+                char: blockType.char,
+                color: blockType.color,
+                x: e.clientX - containerRect.left - 30,
+                y: e.clientY - containerRect.top - 30
+              };
+              setPlacedBlocks(prev => [...prev, newBlock]);
+              setDraggedBlock(newBlock.id);
+              setDragOffset({ x: 30, y: 30 });
+            } else {
+              // 既存のブロックをドラッグ
+              const blockId = parseInt(e.currentTarget.dataset.blockId);
+              setDraggedBlock(blockId);
+              setDragOffset({
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+              });
+            }
+          };
+
+          // マウス移動でブロックを移動
+          const handleMouseMove = (e) => {
+            if (draggedBlock === null) return;
+            
+            const containerRect = containerRef.current.getBoundingClientRect();
+            const newX = e.clientX - containerRect.left - dragOffset.x;
+            const newY = e.clientY - containerRect.top - dragOffset.y;
+            
+            setPlacedBlocks(prev => 
+              prev.map(block => 
+                block.id === draggedBlock 
+                  ? { ...block, x: Math.max(0, Math.min(newX, 700)), y: Math.max(0, Math.min(newY, 400)) }
+                  : block
+              )
+            );
+          };
+
+          // ドラッグ終了
+          const handleMouseUp = () => {
+            setDraggedBlock(null);
+            setDragOffset({ x: 0, y: 0 });
+          };
+
+          // ブロックを削除
+          const removeBlock = (blockId) => {
+            setPlacedBlocks(prev => prev.filter(block => block.id !== blockId));
+          };
+
+          // 全てクリア
+          const clearAll = () => {
+            setPlacedBlocks([]);
+          };
+
+          // プリセットパターン
+          const createPreset = (pattern) => {
+            const presets = {
+              'パステル紫ずどーん': [
+                { char: 'ず', color: '#D8BFD8', x: 50, y: 200 },
+                { char: 'ど', color: '#D8BFD8', x: 120, y: 200 },
+                { char: 'ー', color: '#D8BFD8', x: 190, y: 200 },
+                { char: 'ん', color: '#D8BFD8', x: 260, y: 200 }
+              ],
+              'パステル緑ずどーん': [
+                { char: 'ず', color: '#B5E7A0', x: 50, y: 200 },
+                { char: 'ど', color: '#B5E7A0', x: 120, y: 200 },
+                { char: 'ー', color: '#B5E7A0', x: 190, y: 200 },
+                { char: 'ん', color: '#B5E7A0', x: 260, y: 200 }
+              ],
+              'パステルレインボー': [
+                { char: 'ず', color: '#D8BFD8', x: 50, y: 200 },
+                { char: 'ど', color: '#B5E7A0', x: 120, y: 200 },
+                { char: 'ー', color: '#FFB6C1', x: 190, y: 200 },
+                { char: 'ん', color: '#ADD8E6', x: 260, y: 200 }
+              ],
+              'ふんわりずどどーん': [
+                { char: 'ず', color: '#FFB6C1', x: 50, y: 200 },
+                { char: 'ど', color: '#ADD8E6', x: 120, y: 200 },
+                { char: 'ど', color: '#ADD8E6', x: 190, y: 200 },
+                { char: 'ー', color: '#D8BFD8', x: 260, y: 200 },
+                { char: 'ん', color: '#B5E7A0', x: 330, y: 200 }
+              ]
+            };
+            
+            const newBlocks = presets[pattern].map((block, index) => ({
+              ...block,
+              id: Date.now() + index
+            }));
+            
+            setPlacedBlocks(newBlocks);
+          };
+
+          useEffect(() => {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            
+            return () => {
+              document.removeEventListener('mousemove', handleMouseMove);
+              document.removeEventListener('mouseup', handleMouseUp);
+            };
+          }, [draggedBlock, dragOffset]);
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-6">
+              <div className="max-w-6xl mx-auto">
+                {/* ヘッダー */}
+                <div className="text-center mb-8">
+                  <h1 className="text-4xl font-bold text-gray-800 mb-2">🧱 ずどーん積み木ブロック</h1>
+                  <p className="text-lg text-gray-600">奈井江町のキャッチフレーズで遊ぼう！やさしいパステルカラーで創造力を育む知育玩具</p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  {/* ブロックパレット */}
+                  <div className="lg:col-span-1">
+                    <div className="bg-white rounded-xl shadow-lg p-4">
+                      <h3 className="text-xl font-semibold mb-4 text-gray-800">📦 ブロックパレット</h3>
+                      <p className="text-xs text-gray-500 mb-4">各色で完全な「ずどーん」セットが作れます</p>
+                      
+                      {/* 色別グループ表示 */}
+                      {['パステル紫', 'パステル緑', 'パステルピンク', 'パステル青'].map((colorName) => {
+                        const colorBlocks = blockTypes.filter(block => block.colorName === colorName);
+                        
+                        return (
+                          <div key={colorName} className="mb-4">
+                            <h4 className="text-sm font-semibold mb-2 text-gray-700">{colorName}セット</h4>
+                            <div className="grid grid-cols-4 gap-2">
+                              {colorBlocks.map((blockType, index) => {
+                                const usedCount = getUsedCount(blockType.char, blockType.color);
+                                const available = blockType.count - usedCount;
+                                
+                                return (
+                                  <div key={`${colorName}-${index}`} className="text-center">
+                                    <div
+                                      className={`w-10 h-10 rounded-lg flex items-center justify-center text-gray-700 font-bold text-sm cursor-pointer transform hover:scale-105 transition-transform shadow-md mx-auto mb-1 border-2 border-white ${
+                                        available > 0 ? 'opacity-100' : 'opacity-30 cursor-not-allowed'
+                                      }`}
+                                      style={{ backgroundColor: blockType.color }}
+                                      onMouseDown={(e) => handleMouseDown(e, blockType, true)}
+                                    >
+                                      {blockType.char}
+                                    </div>
+                                    <span className="text-xs text-gray-600">
+                                      {available}/{blockType.count}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {/* プリセットボタン */}
+                      <div className="mt-6">
+                        <h4 className="text-sm font-semibold mb-3 text-gray-700">🎯 プリセット</h4>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => createPreset('パステル紫ずどーん')}
+                            className="w-full text-gray-700 px-3 py-2 rounded-lg text-sm hover:opacity-80 transition-colors border-2 border-purple-200"
+                            style={{ backgroundColor: '#E6E6FA' }}
+                          >
+                            💜 パステル紫
+                          </button>
+                          <button
+                            onClick={() => createPreset('パステル緑ずどーん')}
+                            className="w-full text-gray-700 px-3 py-2 rounded-lg text-sm hover:opacity-80 transition-colors border-2 border-green-200"
+                            style={{ backgroundColor: '#E0F4D7' }}
+                          >
+                            💚 パステル緑
+                          </button>
+                          <button
+                            onClick={() => createPreset('パステルレインボー')}
+                            className="w-full bg-gradient-to-r from-purple-200 via-green-200 via-pink-200 to-blue-200 text-gray-700 px-3 py-2 rounded-lg text-sm hover:opacity-80 transition-colors border-2 border-gray-200"
+                          >
+                            🌈 パステルレインボー
+                          </button>
+                          <button
+                            onClick={() => createPreset('ふんわりずどどーん')}
+                            className="w-full bg-gradient-to-r from-pink-200 to-blue-200 text-gray-700 px-3 py-2 rounded-lg text-sm hover:opacity-80 transition-colors border-2 border-gray-200"
+                          >
+                            ☁️ ふんわりずどどーん
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={clearAll}
+                        className="w-full mt-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+                      >
+                        🗑️ 全てクリア
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* メインプレイエリア */}
+                  <div className="lg:col-span-3">
+                    <div className="bg-white rounded-xl shadow-lg p-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold text-gray-800">🎮 遊び場</h3>
+                        <div className="text-sm text-gray-600">
+                          ブロックをドラッグして自由に配置してね！
+                        </div>
+                      </div>
+                      
+                      <div
+                        ref={containerRef}
+                        className="relative w-full h-96 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden"
+                        style={{ minHeight: '450px' }}
+                      >
+                        {/* 配置されたブロック */}
+                        {placedBlocks.map((block) => (
+                          <div
+                            key={block.id}
+                            data-block-id={block.id}
+                            className="absolute w-16 h-16 rounded-lg flex items-center justify-center text-gray-700 font-bold text-2xl cursor-move shadow-lg transform hover:scale-105 transition-transform select-none group border-2 border-white"
+                            style={{
+                              backgroundColor: block.color,
+                              left: `${block.x}px`,
+                              top: `${block.y}px`,
+                              zIndex: draggedBlock === block.id ? 1000 : 1
+                            }}
+                            onMouseDown={(e) => handleMouseDown(e, block, false)}
+                          >
+                            {block.char}
+                            <button
+                              onClick={() => removeBlock(block.id)}
+                              className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        
+                        {/* ガイドメッセージ */}
+                        {placedBlocks.length === 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-lg">
+                            左のパレットからブロックをドラッグしてね！
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 商品説明 */}
+                <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-2xl font-semibold mb-4 text-gray-800">💡 商品コンセプト</h3>
+                  
+                  {/* 製品イメージ画像エリア */}
+                  <div className="mb-6">
+                    <img 
+                      src="https://raw.githubusercontent.com/YuragiLab/zudon_block/main/images/product-image.png"
+                      alt="ずどーん積み木ブロック 製品イメージ"
+                      className="w-full max-w-4xl mx-auto rounded-lg shadow-lg"
+                    />
+                    <p className="text-center text-sm text-gray-500 mt-2">
+                      パステルカラーで可愛い「ずどーん積み木ブロック」の製品イメージ
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <div className="text-4xl mb-3">🧠</div>
+                      <h4 className="font-semibold text-lg mb-2">知育効果</h4>
+                      <p className="text-gray-600 text-sm">ひらがなの学習と創造力を同時に育む。文字の組み合わせで言葉遊びができる。</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-4xl mb-3">🎨</div>
+                      <h4 className="font-semibold text-lg mb-2">インテリア性</h4>
+                      <p className="text-gray-600 text-sm">カラフルで美しいデザイン。子供部屋のインテリアとしても映える。</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-4xl mb-3">📱</div>
+                      <h4 className="font-semibold text-lg mb-2">SNS映え</h4>
+                      <p className="text-gray-600 text-sm">「ずどーん」や創作した言葉を写真に撮ってSNSでシェア。地域PRにも貢献。</p>
+                    </div>
+                  </div>
+                  <div className="mt-6 p-4 bg-pink-50 rounded-lg border-2 border-pink-100">
+                    <h4 className="font-semibold text-lg mb-2">🌸 パステルカラーの差別化ポイント</h4>
+                    <ul className="text-gray-700 space-y-1">
+                      <li>• <strong>やさしい色合い</strong>：目に優しいパステルトーンで長時間遊んでも疲れない</li>
+                      <li>• <strong>インテリア馴染み</strong>：どんなお部屋にも自然に溶け込む上品な色彩</li>
+                      <li>• <strong>癒し効果</strong>：パステルカラーが心を落ち着かせる効果</li>
+                      <li>• <strong>ジェンダーフリー</strong>：性別を問わず愛される色使い</li>
+                      <li>• <strong>写真映え</strong>：SNSでもふんわり可愛い仕上がり</li>
+                      <li>• <strong>高級感</strong>：淡い色合いが上質な印象を与える</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        ReactDOM.render(<ZudoonBlocksDemo />, document.getElementById('root'));
+    </script>
+</body>
+</html>
